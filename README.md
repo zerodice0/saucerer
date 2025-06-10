@@ -1,36 +1,101 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Saucerer
 
-## Getting Started
+[한국어](README.ko.md) | English
 
-First, run the development server:
+A web application for managing sauce recipes and cooking records.
 
+## Features
+
+- Create, edit, and delete sauce recipes
+- Manage ingredients (name, amount, unit)
+- Add cooking records (photos, notes, ratings, actual ingredient amounts)
+- User-specific data management (authentication required)
+
+## Tech Stack
+
+- **Framework**: Next.js 15 (App Router)
+- **Database**: Supabase (PostgreSQL)
+- **Authentication**: Supabase Auth
+- **Styling**: TailwindCSS v4
+- **Icons**: Lucide React
+- **Language**: TypeScript
+
+## Setup
+
+1. Clone the project and install dependencies:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <repository-url>
+cd saucerer
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Environment variables:
+Create a `.env.local` file and set the following variables:
+```bash
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Run the development server:
+```bash
+npm run dev --turbopack
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-## Learn More
+## Development Commands
 
-To learn more about Next.js, take a look at the following resources:
+- `npm run dev --turbopack` - Start development server with Turbo
+- `npm run build` - Build production application
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Database Schema
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Tables
 
-## Deploy on Vercel
+1. **sauces** - Sauce recipes
+   - `id`, `name`, `user_id`, `created_at`, `updated_at`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+2. **ingredients** - Recipe ingredients
+   - `id`, `sauce_id`, `name`, `amount`, `unit`, `created_at`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+3. **cooking_records** - Cooking attempts
+   - `id`, `sauce_id`, `user_id`, `photo_url`, `notes`, `rating`, `ingredient_amounts` (JSONB), `created_at`
+
+All tables use Row Level Security (RLS) to isolate data by user.
+
+## Project Structure
+
+```
+src/
+├── app/                    # Next.js App Router pages
+│   ├── page.tsx           # Login page (home)
+│   ├── layout.tsx         # Root layout
+│   └── sauces/            # Sauce-related pages
+│       ├── page.tsx       # Sauce list
+│       ├── new/           # Create new sauce
+│       └── [id]/          # Individual sauce pages
+│           ├── page.tsx   # Sauce detail/edit
+│           └── records/   # Cooking records
+├── components/            # Reusable components
+│   ├── LoginForm.tsx     # Login form
+│   └── ui/               # UI components
+└── lib/
+    └── supabase.ts       # Supabase client setup
+```
+
+## Usage
+
+1. Sign up or log in
+2. Create sauce recipes
+3. Add/edit ingredients
+4. Add cooking records after cooking (photos, notes, ratings, etc.)
+
+## Deployment
+
+Recommended deployment on Vercel:
+
+1. Connect project to [Vercel](https://vercel.com)
+2. Set environment variables
+3. Automatic deployment completed
