@@ -1,0 +1,9 @@
+# 로컬 개발용 환경 변수
+# 실제 값으로 복사 후 .dev.vars 파일 생성
+
+DATABASE_URL=postgresql://user:password@host/database?sslmode=require
+JWT_SECRET=your-secret-key-change-this-in-production
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+R2_PUBLIC_URL=https://your-r2-bucket.r2.dev
+FRONTEND_URL=http://localhost:3000

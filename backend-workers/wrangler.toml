@@ -1,0 +1,26 @@
+name = "saucerer-backend"
+main = "src/index.ts"
+compatibility_date = "2025-01-09"
+node_compat = true
+
+# Workers 설정
+[build]
+command = ""
+
+# 환경 변수 (로컬 개발용)
+[vars]
+ENVIRONMENT = "development"
+
+# Secrets (wrangler secret put 명령으로 설정)
+# - DATABASE_URL
+# - JWT_SECRET
+# - GOOGLE_CLIENT_ID
+# - GOOGLE_CLIENT_SECRET
+# - R2_PUBLIC_URL
+# - FRONTEND_URL
+
+# Cloudflare R2 바인딩
+[[r2_buckets]]
+binding = "IMAGES_BUCKET"
+bucket_name = "saucerer-images"
+preview_bucket_name = "saucerer-images-preview"
