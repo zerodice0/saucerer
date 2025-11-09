@@ -1,51 +1,33 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createSupabaseClient } from '@/lib/supabase'
+import { api, type Sauce as ApiSauce, type Ingredient as ApiIngredient, type CookingRecord as ApiCookingRecord } from '@/lib/api'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import Link from 'next/link'
-import { ArrowLeft, Plus, Minus, Star } from 'lucide-react'
+import { ArrowLeft, Plus, Minus, Star, Upload } from 'lucide-react'
 import { useParams } from 'next/navigation'
 
-interface Ingredient {
-  id: string
-  name: string
-  amount: number
-  unit: string
-}
-
-interface Sauce {
-  id: string
-  name: string
-  ingredients: Ingredient[]
-}
-
-interface CookingRecord {
-  id: string
-  photo_url: string | null
-  notes: string | null
-  rating: number | null
-  ingredient_amounts: Record<string, number>
-  created_at: string
-}
+type Ingredient = ApiIngredient
+type Sauce = ApiSauce & { ingredients: Ingredient[] }
+type CookingRecord = ApiCookingRecord
 
 export default function SauceDetailPage() {
   const params = useParams()
   const sauceId = params.id as string
-  
+
   const [sauce, setSauce] = useState<Sauce | null>(null)
   const [currentAmounts, setCurrentAmounts] = useState<{[key: string]: number}>({})
   const [cookingRecords, setCookingRecords] = useState<CookingRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  
+
   // 새 조리 기록 폼
   const [notes, setNotes] = useState('')
   const [rating, setRating] = useState<number>(0)
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoUrl, setPhotoUrl] = useState('')
+  const [isUploading, setIsUploading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  
-  const supabase = createSupabaseClient()
 
   useEffect(() => {
     if (sauceId) {
@@ -55,18 +37,11 @@ export default function SauceDetailPage() {
   }, [sauceId])
 
   const fetchSauceDetails = async () => {
-    const { data, error } = await supabase
-      .from('sauces')
-      .select(`
-        *,
-        ingredients (*)
-      `)
-      .eq('id', sauceId)
-      .single()
+    const { data, error } = await api.sauces.get(sauceId)
 
     if (error) {
       console.error('Error fetching sauce:', error)
-    } else {
+    } else if (data) {
       setSauce(data)
       // 초기 조미료 양 설정
       const initialAmounts: {[key: string]: number} = {}
@@ -79,11 +54,7 @@ export default function SauceDetailPage() {
   }
 
   const fetchCookingRecords = async () => {
-    const { data, error } = await supabase
-      .from('cooking_records')
-      .select('*')
-      .eq('sauce_id', sauceId)
-      .order('created_at', { ascending: false })
+    const { data, error } = await api.cookingRecords.list(sauceId)
 
     if (error) {
       console.error('Error fetching cooking records:', error)
@@ -99,36 +70,57 @@ export default function SauceDetailPage() {
     }))
   }
 
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setPhotoFile(file)
+    setIsUploading(true)
+
+    try {
+      const { data, error } = await api.upload.image(file)
+      if (error) throw error
+
+      if (data?.url) {
+        setPhotoUrl(data.url)
+      }
+    } catch (error: unknown) {
+      console.error('Error uploading image:', error)
+      alert(`이미지 업로드 중 오류가 발생했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`)
+      setPhotoFile(null)
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
   const handleSubmitRecord = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
 
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
+      const { data: user, error: authError } = await api.auth.getCurrentUser()
+      if (authError || !user) {
         window.location.href = '/'
         return
       }
 
-      const { error } = await supabase
-        .from('cooking_records')
-        .insert({
-          sauce_id: sauceId,
-          user_id: user.id,
-          photo_url: photoUrl || null,
-          notes: notes || null,
-          rating: rating || null,
-          ingredient_amounts: currentAmounts
-        })
+      const { error } = await api.cookingRecords.create({
+        sauce_id: sauceId,
+        photo_url: photoUrl || undefined,
+        notes: notes || undefined,
+        rating: rating || undefined,
+        ingredient_amounts: currentAmounts
+      })
 
       if (error) throw error
 
       // 폼 초기화
       setNotes('')
       setRating(0)
+      setPhotoFile(null)
       setPhotoUrl('')
       fetchCookingRecords()
-      
+
       alert('조리 기록이 저장되었습니다!')
     } catch (error: unknown) {
       console.error('Error saving cooking record:', error)
@@ -227,17 +219,26 @@ export default function SauceDetailPage() {
             {/* 조리 기록 추가 폼 */}
             <form onSubmit={handleSubmitRecord} className="mt-8 space-y-4">
               <h3 className="text-lg font-semibold text-gray-700">조리 결과 기록</h3>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  사진 URL (선택사항)
+                  사진 업로드 (선택사항)
                 </label>
-                <Input
-                  type="url"
-                  placeholder="https://example.com/photo.jpg"
-                  value={photoUrl}
-                  onChange={(e) => setPhotoUrl(e.target.value)}
-                />
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                    disabled={isUploading}
+                  />
+                  {isUploading && <span className="text-sm text-gray-500">업로드 중...</span>}
+                </div>
+                {photoUrl && (
+                  <div className="mt-2">
+                    <img src={photoUrl} alt="미리보기" className="w-32 h-32 object-cover rounded-md" />
+                  </div>
+                )}
               </div>
 
               <div>

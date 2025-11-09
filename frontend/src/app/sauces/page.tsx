@@ -1,22 +1,15 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createSupabaseClient } from '@/lib/supabase'
+import { api, Sauce, User } from '@/lib/api'
 import { Button } from '@/components/ui/Button'
 import Link from 'next/link'
 import { Plus, ChefHat, LogOut } from 'lucide-react'
 
-interface Sauce {
-  id: string
-  name: string
-  created_at: string
-}
-
 export default function SaucesPage() {
   const [sauces, setSauces] = useState<Sauce[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [user, setUser] = useState<{ email?: string } | null>(null)
-  const supabase = createSupabaseClient()
+  const [user, setUser] = useState<User | null>(null)
 
   useEffect(() => {
     checkUser()
@@ -24,19 +17,16 @@ export default function SaucesPage() {
   }, [])
 
   const checkUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
+    const { data, error } = await api.auth.getCurrentUser()
+    if (error || !data) {
       window.location.href = '/'
       return
     }
-    setUser(user)
+    setUser(data)
   }
 
   const fetchSauces = async () => {
-    const { data, error } = await supabase
-      .from('sauces')
-      .select('*')
-      .order('created_at', { ascending: false })
+    const { data, error } = await api.sauces.list()
 
     if (error) {
       console.error('Error fetching sauces:', error)
@@ -47,7 +37,7 @@ export default function SaucesPage() {
   }
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
+    await api.auth.logout()
     window.location.href = '/'
   }
 
