@@ -55,3 +55,7 @@ coverage/
 
 # Supabase
 .supabase/
+
+# Backend
+backend/dist/
+backend/.env

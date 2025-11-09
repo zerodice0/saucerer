@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { createSupabaseClient } from '@/lib/supabase'
+import { api } from '@/lib/api'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import Link from 'next/link'
@@ -19,7 +19,6 @@ export default function NewSaucePage() {
     { id: '1', name: '', amount: 0 }
   ])
   const [isLoading, setIsLoading] = useState(false)
-  const supabase = createSupabaseClient()
 
   const addIngredient = () => {
     const newId = Date.now().toString()
@@ -40,7 +39,7 @@ export default function NewSaucePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!sauceName.trim()) {
       alert('소스 이름을 입력해주세요.')
       return
@@ -55,35 +54,24 @@ export default function NewSaucePage() {
     setIsLoading(true)
 
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
+      const { data: user, error: authError } = await api.auth.getCurrentUser()
+      if (authError || !user) {
         window.location.href = '/'
         return
       }
 
-      const { data: sauce, error: sauceError } = await supabase
-        .from('sauces')
-        .insert({
-          name: sauceName,
-          user_id: user.id
-        })
-        .select()
-        .single()
-
-      if (sauceError) throw sauceError
-
       const ingredientData = validIngredients.map(ing => ({
-        sauce_id: sauce.id,
         name: ing.name,
         amount: ing.amount,
         unit: '큰술'
       }))
 
-      const { error: ingredientError } = await supabase
-        .from('ingredients')
-        .insert(ingredientData)
+      const { data: sauce, error } = await api.sauces.create({
+        name: sauceName,
+        ingredients: ingredientData
+      })
 
-      if (ingredientError) throw ingredientError
+      if (error) throw error
 
       window.location.href = '/sauces'
     } catch (error: unknown) {

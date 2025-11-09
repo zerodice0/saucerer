@@ -1,43 +1,23 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createSupabaseClient } from '@/lib/supabase'
+import { api, type Sauce as ApiSauce, type Ingredient as ApiIngredient, type CookingRecord as ApiCookingRecord } from '@/lib/api'
 import { Button } from '@/components/ui/Button'
 import Link from 'next/link'
 import { ArrowLeft, Star } from 'lucide-react'
 import { useParams } from 'next/navigation'
 
-interface Ingredient {
-  id: string
-  name: string
-  amount: number
-  unit: string
-}
-
-interface Sauce {
-  id: string
-  name: string
-  ingredients: Ingredient[]
-}
-
-interface CookingRecord {
-  id: string
-  photo_url: string | null
-  notes: string | null
-  rating: number | null
-  ingredient_amounts: Record<string, number>
-  created_at: string
-}
+type Ingredient = ApiIngredient
+type Sauce = ApiSauce & { ingredients: Ingredient[] }
+type CookingRecord = ApiCookingRecord
 
 export default function CookingRecordsPage() {
   const params = useParams()
   const sauceId = params.id as string
-  
+
   const [sauce, setSauce] = useState<Sauce | null>(null)
   const [cookingRecords, setCookingRecords] = useState<CookingRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  
-  const supabase = createSupabaseClient()
 
   useEffect(() => {
     if (sauceId) {
@@ -47,28 +27,17 @@ export default function CookingRecordsPage() {
   }, [sauceId])
 
   const fetchSauceDetails = async () => {
-    const { data, error } = await supabase
-      .from('sauces')
-      .select(`
-        *,
-        ingredients (*)
-      `)
-      .eq('id', sauceId)
-      .single()
+    const { data, error } = await api.sauces.get(sauceId)
 
     if (error) {
       console.error('Error fetching sauce:', error)
-    } else {
+    } else if (data) {
       setSauce(data)
     }
   }
 
   const fetchCookingRecords = async () => {
-    const { data, error } = await supabase
-      .from('cooking_records')
-      .select('*')
-      .eq('sauce_id', sauceId)
-      .order('created_at', { ascending: false })
+    const { data, error } = await api.cookingRecords.list(sauceId)
 
     if (error) {
       console.error('Error fetching cooking records:', error)
